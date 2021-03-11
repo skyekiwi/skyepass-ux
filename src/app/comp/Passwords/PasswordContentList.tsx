@@ -4,13 +4,14 @@ import PropTypes from 'prop-types';
 import {CssBaseline, Divider, Drawer, Avatar, List, ListItem, Grid,
 	ListSubheader, ListItemIcon, ListItemText, Typography} 
 	from '@material-ui/core'
+import { ipcRenderer } from 'electron'
 
-	import InboxIcon from '@material-ui/icons/MoveToInbox';
+import ChevronRightIcon from '@material-ui/icons/ChevronRight';
 
 import { deepOrange, deepPurple } from '@material-ui/core/colors';
 import { makeStyles } from '@material-ui/core/styles';
-import SkyePassTheme from '../theme'
-import AppContentMain from './AppContentMain'
+import SkyePassTheme from '../../theme'
+import AppContentMain from './PasswordContentMain'
 
 const mainWindowWidth = 800;
 
@@ -46,10 +47,9 @@ const generate_style = (theme) => ({
 	},
 })
 
-
 const useStyles = makeStyles(generate_style(SkyePassTheme));
 
-export default function AppContentList(){
+export default function PasswordContentList(){
   const classes = useStyles();
 	const [state, setState] = React.useState({
     open: false
@@ -62,7 +62,15 @@ export default function AppContentList(){
 
     setState({ ...state, open: open });
   };
+	const passwords = ipcRenderer.sendSync('db.readItem', { appId: 'password.skye.kiwi' })
 
+	// React.useEffect(() => {
+	// 	const passwords = ipcRenderer.sendSync('db.readItem', {appId: 'password.skye.kiwi'})
+	// 	setState({
+	// 		open: state.open,
+	// 		data: passwords
+	// 	})
+	// })
 
   return (
 		<Grid container>
@@ -81,19 +89,18 @@ export default function AppContentList(){
 			</Grid>
 			<Grid item xs={12}>
 				<List classNames={classes.listContainer}>
-					{["Twitter", "Gmail", "Github", "Twitter", "b", "c","a", "b", "c","a", "b", "c","a", "b", "c","a", "b", "c"]
-					.map((item, index) => {
+					{passwords.map((item, index) => {
 						return <ListItem button className={classes.listItem} key={index} 
-							onClick={() => setState({open: true})}>
+							onClick={() => setState({open: true, item: item})}>
 							<ListItemIcon>
-								<InboxIcon />
+								<ChevronRightIcon />
 							</ListItemIcon>
-							<ListItemText primary={item} secondary={item}/>
+							<ListItemText primary={item.name} secondary={item.account}/>
 						</ListItem>
 					})}
 				</List>
 				<Drawer anchor="right" open={state.open} onClose={() => setState({open: false})}>
-					{AppContentMain()}
+					{AppContentMain(state.item)}
 				</Drawer>
 			</Grid>
 		</Grid>

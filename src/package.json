@@ -14,5 +14,19 @@
     "postinstall": "yarn electron-rebuild"
   },
   "license": "MIT",
-  "dependencies": {}
+  "dependencies": {
+    "@polkadot/api": "^4.0.3",
+    "@polkadot/api-contract": "^4.0.3",
+    "@polkadot/keyring": "^6.0.5",
+    "@polkadot/networks": "^6.0.5",
+    "@polkadot/util": "^6.0.5",
+    "@polkadot/util-crypto": "^6.0.5",
+    "@uiw/react-md-editor": "^3.0.0-beta.1",
+    "crypto-js": "^4.0.0",
+    "eth-crypto": "^1.8.0",
+    "ipfs-http-client": "^49.0.3",
+    "lowdb": "^1.0.0",
+    "secrets.js-grempe": "^2.0.0",
+    "uuid": "^8.3.2"
+  }
 }

@@ -1,7 +1,7 @@
 import React from 'react';
 import clsx from 'clsx'
 import PropTypes from 'prop-types';
-import {CssBaseline, Divider, Drawer, Avatar, List, ListItem, BottomNavigation, BottomNavigationAction,
+import {CssBaseline, Button, Drawer, Avatar, List, ListItem, BottomNavigation, BottomNavigationAction,
 	ListSubheader, ListItemIcon, ListItemText, Typography} 
 	from '@material-ui/core'
 
@@ -14,14 +14,16 @@ import MenuIcon from '@material-ui/icons/Menu';
 import FolderIcon from '@material-ui/icons/Folder';
 import RestoreIcon from '@material-ui/icons/Restore';
 import FavoriteIcon from '@material-ui/icons/Favorite';
+import SettingsIcon from '@material-ui/icons/Settings';
+import LocalMallIcon from '@material-ui/icons/LocalMall';
+import LockIcon from '@material-ui/icons/Lock';
 import LocationOnIcon from '@material-ui/icons/LocationOn';
 
 import NotesOutlinedIcon from '@material-ui/icons/NotesOutlined';
 import NoteOutlinedIcon from '@material-ui/icons/NoteOutlined';
 import FingerprintOutlinedIcon from '@material-ui/icons/FingerprintOutlined';
 import CreditCardOutlinedIcon from '@material-ui/icons/CreditCardOutlined';
-
-import MonetizationOnOutlinedIcon from '@material-ui/icons/MonetizationOnOutlined';
+import { ipcRenderer } from 'electron'
 
 import { deepOrange, deepPurple } from '@material-ui/core/colors';
 import { makeStyles } from '@material-ui/core/styles';
@@ -54,7 +56,7 @@ const generate_style = (theme) => ({
     ...theme.mixins.toolbar,
     justifyContent: 'flex-begin',
 		marginTop: 20,
-		marginBottom: -20
+		// marginBottom: -20
   },
 	orange: {
 		color: theme.palette.getContrastText(deepOrange[500]),
@@ -86,36 +88,34 @@ const generate_style = (theme) => ({
 	},
 	navButton: {
 		color: theme.palette.secondary.light,
-		
+		// fontSize: 
+	}, save_button: {
+		marginLeft: theme.spacing(6)
 	}
 })
 
 
 const useStyles = makeStyles(generate_style(SkyePassTheme));
 
-export default function AppSideMenu(){
+export default function AppSideMenu(cb){
   const classes = useStyles();
 
-	const [value, setValue] = React.useState('recents');
-  const [selectedIndex, setSelectedIndex] = React.useState(1);
-	const handleChange = (event, newValue) => {
-    setValue(newValue);
-  };
-  const handleListItemClick = (event, index) => {
-    setSelectedIndex(index);
+	const [view, setView] = React.useState('password')
+
+  const handleViewChange = (event, index) => {
+		cb(index)
+		setView(index)
   };
 
 	const mainCategories = [
-		{Icon: NotesOutlinedIcon, Text: "All Items"}, 
-		{Icon: FingerprintOutlinedIcon, Text: "Passwords"},
-		{Icon: NoteOutlinedIcon, Text: "Secure Notes"}, 
-		{Icon: CreditCardOutlinedIcon, Text: "Credit Cards"}
+		{Icon: FingerprintOutlinedIcon, Text: "Passwords", Index: 'password'},
+		{Icon: NoteOutlinedIcon, Text: "Secure Notes", Index: 'note'}, 
+		{Icon: CreditCardOutlinedIcon, Text: "Credit Cards", Index: 'credit_card'}
 	]
 
 	const appCategories = [
-		{Icon: NotesOutlinedIcon, Text: "Polkadot Wallet"}, 
-		{Icon: FingerprintOutlinedIcon, Text: "Eth Wallet"},
-		{Icon: NoteOutlinedIcon, Text: "SSH Login Tool"}, 
+		{ Icon: CreditCardOutlinedIcon, Text: "Polkadot Wallet", Index: 'polkadot_wallet'},
+		{ Icon: CreditCardOutlinedIcon, Text: "Eth Wallet", Index: 'eth_wallet'},
 	]
 
 
@@ -124,21 +124,20 @@ export default function AppSideMenu(){
       <CssBaseline />
       <Drawer
         className={classes.drawer}
-        variant="persistent"
-        anchor="left"
-        open={true}
+        variant="persistent" anchor="left" open={true}
         classes={{
           paper: classes.drawerPaper,
         }}
       >
         <div className={classes.drawerHeader}>
 						<Avatar className={classes.orange}>N</Avatar>
+						<Button className={classes.save_button} variant="outlined" color="secondary">Save Vault</Button>
         </div>
         <List subheader={<ListSubheader className={classes.subheader}>Categories</ListSubheader>}>
           {mainCategories.map((Item, index) => {
 							return <ListItem button key={index}
-								selected={selectedIndex === index}
-								onClick={(event) => handleListItemClick(event, index)}>
+								selected={view === Item.Index}
+								onClick={(event) => handleViewChange(event, Item.Index)}>
 								<ListItemIcon className={classes.listIcons}>
 									<Item.Icon /></ListItemIcon>
 								<ListItemText disableTypography={true} className={classes.listText} primary={Item.Text}/>
@@ -149,18 +148,21 @@ export default function AppSideMenu(){
 				<List subheader={<ListSubheader className={classes.subheader}>Apps</ListSubheader>}>
 					{appCategories.map((Item, index) => {
 							return <ListItem button key={index}
-								selected={selectedIndex === index + mainCategories.length}
-								onClick={(event) => handleListItemClick(event, index + mainCategories.length)}>
+								selected={view === Item.Index}
+								onClick={(event) => handleViewChange(event, Item.Index)}>
 								<ListItemIcon className={classes.listIcons}>
 									<Item.Icon /></ListItemIcon>
 								<ListItemText disableTypography={true} className={classes.listText} primary={Item.Text}/>
 							</ListItem>
 						})}
         </List>
-				<BottomNavigation value={value} onChange={handleChange} className={classes.nav}>
-					<BottomNavigationAction label="Recents" value="recents" icon={<RestoreIcon />} className={classes.navButton}/>
-					<BottomNavigationAction label="Nearby" value="nearby" icon={<LocationOnIcon />} className={classes.navButton}/>
-					<BottomNavigationAction label="Folder" value="folder" icon={<FolderIcon />} className={classes.navButton} />
+				<BottomNavigation value={view} onChange={handleViewChange} className={classes.nav}>
+					<BottomNavigationAction label="Settings" value="setting" 
+						icon={<SettingsIcon />} className={classes.navButton}/>
+					<BottomNavigationAction label="Apps" value="app" 
+						icon={<LocalMallIcon />} className={classes.navButton}/>
+					<BottomNavigationAction label="Lock" value="lock" 
+						icon={<LockIcon />} className={classes.navButton} />
 				</BottomNavigation>
       </Drawer>
     </div>

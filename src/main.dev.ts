@@ -10,11 +10,186 @@
  */
 import 'core-js/stable';
 import 'regenerator-runtime/runtime';
-import path from 'path';
-import { app, BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
+
+import fs from 'fs'
+import { waitReady } from '@polkadot/wasm-crypto'
+import { DB, IPFS, Metadata, Blockchain } from './client/index'
+import path from 'path'
+
+let instance: any = {}
+const setUp = async () => {
+  await waitReady()
+  const filePath = path.resolve(__dirname + '/client/passwords.json')
+  instance.db = new DB(filePath)
+
+  console.log(instance.db.getCID())
+  instance.ipfs = new IPFS({ host: 'ipfs.infura.io', port: 5001, protocol: 'https' })
+}
+
+
+// ipcMain.on('db.readItem', async (event, arg) => {
+//   await setUp()
+//   const uri = "second glad business heavy bargain dismiss evil cheap turtle lecture myself myself"
+//   const blockchain = new Blockchain(uri,
+//     '5H1u2yovWepdiMps1epY3NXmYNxffzojChsH4BMqZaL1WC1Y', instance.ipfs)
+
+//   const x = await blockchain.buildVaultsCache()
+//   event.returnValue = x
+// })
+
+// DB
+ipcMain.on('db.readItem', async (event, arg) => {
+  if (!instance.db) await setUp()
+
+  const { appId } = arg
+  event.returnValue = instance.db.readItems(appId)
+})
+
+ipcMain.on('db.addItem', async (event, arg) => {
+  if (!instance.db) await setUp()
+
+  const { appId, content } = arg
+  instance.db.addItem(appId, content)
+  event.returnValue = { status: 1 }
+})
+
+ipcMain.on('db.updateItem', async (event, arg) => {
+  if (!instance.db) await setUp()
+
+  const { appId, uuid, content } = arg
+  instance.db.updateItem(appId, uuid, content)
+  event.returnValue = { status: 1 }
+})
+
+ipcMain.on('db.deleteItem', async (event, arg) => {
+  if (!instance.db) await setUp()
+
+  const { appId, uuid } = arg
+  instance.db.deleteItem(appId, uuid)
+  event.returnValue = { status: 1 }
+})
+
+ipcMain.on('db.installApp', async (event, arg) => {
+  if (!instance.db) await setUp()
+
+  const { appId, appMetadata } = arg
+  instance.db.installApp(appId, appMetadata)
+  event.returnValue = { status: 1 }
+})
+
+// Metadata 
+ipcMain.on('metadata.buildMetadata', async (event, arg) => {
+  if (!instance.db) await setUp()
+
+  const { encryptionSchema, name } = arg
+  const metadata = new Metadata(encryptionSchema, name,
+    instance.ipfs, instance.db
+  )
+  event.returnValue = (await metadata.buildMetadata()).cid
+})
+
+ipcMain.on('metadata.recover', async (event, arg) => {
+  if (!instance.db) await setUp()
+  const { encryptionSchema, cid } = arg
+  if (!instance.blockchain)
+    event.returnValue = { status: 0, msg: "no identity" }
+  const data = JSON.parse(await instance.ipfs.cat(cid))
+
+  const metadata = new Metadata(
+    encryptionSchema, data.name, instance.ipfs, instance.db
+  )
+  event.returnValue = await metadata.recover(data, instance.blockchain.publicKey,
+      instance.blockchain.privateKey)
+})
+
+// Blockchain
+ipcMain.on('blockchain.injectIdentity', async (event, arg) => {
+  if (!instance.db) await setUp()
+  const { mnemonic, contract_address } = arg
+  const ipfs = new IPFS({ host: 'ipfs.infura.io', port: 5001, protocol: 'https' })
+  instance.blockchain = new Blockchain(mnemonic, contract_address, ipfs)
+  event.returnValue = {
+    address: instance.blockchain.address,
+    publicKey: instance.blockchain.publicKey
+  }
+})
+
+ipcMain.on('blockchain.getVaults', async (event, arg) => {
+  if (!instance.db) await setUp()
+  if (!instance.blockchain) {
+    event.returnValue = { status: 0, msg: "no identity" }
+    return
+  }
+  event.returnValue = JSON.stringify(await instance.blockchain.getVaults())
+})
+
+ipcMain.on('blockchain.createVault', async (event, arg) => {
+  if (!instance.db) await setUp()
+  const { cid } = arg
+  if (!instance.blockchain) {
+    event.returnValue = { status: 0, msg: "no identity" }
+    return
+  }
+  await instance.blockchain.createVault(cid)
+  event.returnValue = { status: 1 }
+})
+ipcMain.on('blockchain.refreshCache', async(event, arg) => {
+  if (!instance.db) await setUp()
+  if (!instance.blockchain) {
+    event.returnValue = { status: 0, msg: "no identity" }
+    return
+  }
+  fs.writeFileSync(path.resolve(__dirname + '/client/cache.json'), '{}')
+  await instance.blockchain.buildVaultsCache()
+})
+
+ipcMain.on('blockchain.nominateMember', async (event, arg) => {
+  if (!instance.db) await setUp()
+  const { vault_id, address } = arg
+  if (!instance.blockchain) {
+    event.returnValue = { status: 0, msg: "no identity" }
+    return
+  }
+  await instance.blockchain.nominateMember(vault_id, address)
+  event.returnValue = { status: 1 }
+})
+
+ipcMain.on('blockchain.removeMember', async (event, arg) => {
+  if (!instance.db) await setUp()
+  const { vault_id, address } = arg
+  if (!instance.blockchain) {
+    event.returnValue = { status: 0, msg: "no identity" }
+    return
+  }
+  await instance.blockchain.removeMember(vault_id, address)
+  event.returnValue = { status: 1 }
+})
+
+ipcMain.on('blockchain.updateVault', async (event, arg) => {
+  if (!instance.db) await setUp()
+  const { vault_id, cid } = arg
+  if (!instance.blockchain) {
+    event.returnValue = { status: 0, msg: "no identity" }
+    return
+  }
+  await instance.blockchain.updateMetadata(vault_id, cid)
+  event.returnValue = { status: 1 }
+})
+
+ipcMain.on('blockchain.burnVault', async (event, arg) => {
+  if (!instance.db) await setUp()
+  const { vault_id } = arg
+  if (!instance.blockchain) {
+    event.returnValue = { status: 0, msg: "no identity" }
+    return
+  }
+  await instance.blockchain.burnVault(vault_id)
+  event.returnValue = { status: 1 }
+})
 
 export default class AppUpdater {
   constructor() {
@@ -52,6 +227,9 @@ const installExtensions = async () => {
 };
 
 const createWindow = async () => {
+
+  await waitReady()
+
   if (
     process.env.NODE_ENV === 'development' ||
     process.env.DEBUG_PROD === 'true'
